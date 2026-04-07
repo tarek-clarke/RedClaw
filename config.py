@@ -3,13 +3,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# LM Studio Configuration
-LM_STUDIO_HOST = os.getenv("LM_STUDIO_HOST", "http://localhost:1234/v1")
-LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio") # dummy key for local
+# LM Studio Configuration (Synced with V3.1 Screenshot)
+LM_STUDIO_HOST = os.getenv("LM_STUDIO_HOST", "http://100.119.120.114:1234/v1")
+LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
 
 # RedClaw Agent Settings
-DEFAULT_MODEL_VISION = os.getenv("DEFAULT_MODEL_VISION", "gemma-4")
-DEFAULT_MODEL_REASONING = os.getenv("DEFAULT_MODEL_REASONING", "gpt-oss-20b")
+DEFAULT_MODEL_VISION = os.getenv("DEFAULT_MODEL_VISION", "openai/gpt-oss-20b")
+DEFAULT_MODEL_REASONING = os.getenv("DEFAULT_MODEL_REASONING", "openai/gpt-oss-20b")
 DRY_RUN = os.getenv("DRY_RUN", "False").lower() == "true"
 
 # Browser Settings
