@@ -42,6 +42,12 @@ class RedClawAgent:
             screenshot_path = await self.browser.take_screenshot("current_state.png")
             accessibility_tree = await self.browser.get_accessibility_tree()
             
+            # 2.1 CAPTCHA Check (V2.5)
+            if self.safety.is_captcha_present(accessibility_tree):
+                print(f"\n[REDCLAW] SAFETY TRIGGER: CAPTCHA detected. Pausing for human intervention.")
+                await self.browser.wait_for_user()
+                continue
+
             # 3. Decide
             prompt = self._build_prompt(goal, accessibility_tree)
             response = self.llm.multimodal_completion(prompt, screenshot_path)

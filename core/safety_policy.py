@@ -19,6 +19,11 @@ class SafetyPolicy:
         except Exception:
             return False
 
+    def is_captcha_present(self, text: str) -> bool:
+        """Detect CAPTCHA-related keywords in page text."""
+        captcha_keywords = ["captcha", "robot", "human", "verify your identity", "solve to continue"]
+        return any(kw in text.lower() for kw in captcha_keywords)
+
     def should_pause_before_action(self, action_type: str, action_data: str = "") -> bool:
         """Determine if a manual pause is required based on action type."""
         action_type = action_type.upper()
