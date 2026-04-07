@@ -37,8 +37,11 @@ def main(
     """RedClaw: Local Browser Agent for AMD users."""
     
     # Load user data
+    print("[REDCLAW] [BOOT] Loading user_profile.json...")
     profile = load_profile()
+    print("[REDCLAW] [BOOT] Extracting text from resume...")
     resume_text = ResumeManager.extract_text(resume) or ""
+    print(f"[REDCLAW] [BOOT] Resume loaded ({len(resume_text)} chars).")
     
     # 1. Handle Batch Mode (URL File)
     if url_file:
@@ -48,7 +51,7 @@ def main(
                 urls = [line.strip() for line in f if line.strip()]
             
             for i, target_url in enumerate(urls):
-                print(f"\n[REDCLAW] Processing Job {i+1}/{len(urls)}: {target_url}")
+                print(f"\n[REDCLAW] [BOOT] Launching Job {i+1}/{len(urls)}: {target_url}")
                 asyncio.run(run_redclaw(goal, target_url, resume_text, profile, dry_run, session, False))
             return
         else:
