@@ -17,38 +17,61 @@ def load_profile(path: str = "user_profile.json") -> dict:
     return {}
 
 @click.command()
-@click.option("--goal", prompt="What task should RedClaw perform?", help="The goal for the agent.")
-@click.option("--url", default="https://www.google.com", help="Initial URL.")
+@click.option("--goal", default="Find and apply for senior ML roles", help="The goal for the agent.")
+@click.option("--url", default=None, help="Initial URL (skips discovery if provided).")
 @click.option("--resume", default="resume.pdf", help="Path to your PDF resume.")
 @click.option("--dry-run", is_flag=True, help="Run without clicking final submit.")
 @click.option("--session", default="default", help="Persistent browser session name.")
-def main(goal: str, url: str, resume: str, dry_run: bool, session: str):
+@click.option("--discover", is_flag=True, help="Search for new jobs based on your profile.")
+def main(goal: str, url: str, resume: str, dry_run: bool, session: str, discover: bool):
     """RedClaw: Local Browser Agent for AMD users."""
     
     # Load user data
     profile = load_profile()
     resume_text = ResumeManager.extract_text(resume) or ""
     
-    asyncio.run(run_redclaw(goal, url, resume_text, profile, dry_run, session))
+    asyncio.run(run_redclaw(goal, url, resume_text, profile, dry_run, session, discover))
 
-async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_run: bool, session_name: str):
+async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_run: bool, session_name: str, discover: bool):
     # 1. Setup
     print(f"\n[REDCLAW] Connecting to LM Studio at {LM_STUDIO_HOST}...")
-    print(f"[REDCLAW] (If LM Studio is on another PC, update config.py with the PC's IP address)")
     
     if dry_run:
         print("[REDCLAW] DRY-RUN MODE ACTIVE: No submissions will be made.")
 
     browser = BrowserManager(headless=False, session_name=session_name)
     llm = LLMManager()
+    preflight = PreflightManager(llm, resume_text=resume_text, profile_data=profile)
     agent = RedClawAgent(browser, llm, resume_text=resume_text, profile_data=profile, dry_run=dry_run)
     
     try:
         await browser.start()
-        await browser.navigate(url)
         
-        # 2. Start Task
-        await agent.run_task(goal)
+        # 2. Discovery Mode (V2.2)
+        if discover and not url:
+            from core.discovery import JobDiscovery
+            discovery = JobDiscovery(browser, llm, preflight)
+            ranked_jobs = await discovery.run_discovery()
+            
+            print("\n[REDCLAW] DISCOVERY REPORT (Top Recommendations):")
+            for i, job in enumerate(ranked_jobs[:5]):
+                print(f"{i+1}. {job['title']} at {job['company']} (Score: {job['score']}/100)")
+                print(f"   Fit: {job['recommendation']}")
+            
+            # For simplicity in V2.2, we just take the top job if user approves
+            print("\n[REDCLAW] Enter the number of the job you want to target (or 'none'):")
+            choice = await asyncio.to_thread(input, "RedClaw Target> ")
+            if choice.isdigit() and int(choice) <= len(ranked_jobs):
+                url = ranked_jobs[int(choice)-1]['link']
+                print(f"[REDCLAW] Targeting: {url}")
+            else:
+                print("[REDCLAW] Discovery phase ended.")
+                return
+
+        # 3. Start Application Flow
+        if url:
+            await browser.navigate(url)
+            await agent.run_task(goal)
         
     finally:
         await browser.stop()
