@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# LM Studio Configuration (Synced with V3.1 Screenshot)
-LM_STUDIO_HOST = os.getenv("LM_STUDIO_HOST", "http://100.119.120.114:1234/v1")
+# LM Studio Configuration (Clean Config V3.2)
+LM_STUDIO_HOST = os.getenv("LM_STUDIO_HOST", "http://localhost:1234/v1")
 LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
 
 # RedClaw Agent Settings
