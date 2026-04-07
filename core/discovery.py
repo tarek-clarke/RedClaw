@@ -28,44 +28,69 @@ class JobDiscovery:
         
         OUTPUT ONLY A JSON LIST OF STRINGS.
         """
+        print(f"[REDCLAW] Generating search queries... (Waiting for LM Studio response)")
         messages = [{"role": "user", "content": prompt}]
-        response = self.llm.chat_completion(messages)
         try:
+            # We'll try to get a response, but we have fallbacks
+            response = self.llm.chat_completion(messages)
             return json.loads(response)
-        except:
-            # Fallback queries
-            return ["Senior ML Engineer AMD ROCm", "Autonomous Browser Agent Developer", "PhD Machine Learning Engineer"]
+        except Exception as e:
+            print(f"[REDCLAW] LLM Fallback: Using default profile-based queries.")
+            # Fallback queries based on PhD / Data Engineering profile
+            return ["Senior Data Engineer Statistics Canada", "PhD ML Engineer ROCm", "Autonomous Analytics Pipeline Developer"]
 
     async def search_google_jobs(self, query: str) -> List[Dict[str, Any]]:
-        """Perform a Google Jobs search and extract results."""
+        """Perform a Google Jobs search and extract results with high resilience."""
         search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}+jobs"
         await self.browser.navigate(search_url)
-        # Wait for potential results to load
-        await asyncio.sleep(3)
         
-        # Extract basic info from the search results
+        # Wait for results or human intervention
+        await asyncio.sleep(4)
+        
+        # Broad selectors to catch various Google Job layouts
         results = await self.browser.page.evaluate('''() => {
             const listings = [];
-            const items = document.querySelectorAll('div[data-job-id], .jF57fe, .B8S79c');
+            // Try multiple common Google Job selectors
+            const items = document.querySelectorAll('div[data-job-id], .jF57fe, .B8S79c, .G67S8c, .vNEEBe');
+            
             items.forEach(item => {
-                listings.push({
-                    title: item.querySelector('.Bj9u3e, .iYjOfc')?.innerText || 'Unknown Title',
-                    company: item.querySelector('.vNEEBe, .v76pQ')?.innerText || 'Unknown Company',
-                    snippet: item.innerText.slice(0, 200),
-                    link: window.location.href // Most links are internal JS clicks in Google Jobs
-                });
+                const titleEl = item.querySelector('.Bj9u3e, .iYjOfc, .P8S79c, h2');
+                const companyEl = item.querySelector('.vNEEBe, .v76pQ, .v76pQ');
+                
+                if (titleEl && titleEl.innerText.length > 3) {
+                    listings.push({
+                        title: titleEl.innerText,
+                        company: companyEl ? companyEl.innerText : 'Listed Company',
+                        snippet: item.innerText.slice(0, 300),
+                        link: window.location.href 
+                    });
+                }
             });
-            return listings.slice(0, 10);
+            return listings;
         }''')
-        return results
+        
+        if not results:
+            print(f"\n[REDCLAW] WARNING: No job elements detected via DOM selectors.")
+            print("[REDCLAW] If the browser is on the correct results page, please click a job or scroll once.")
+            print("[REDCLAW] Press 'done' to try extracting again, or 'skip' to move to the next search.")
+            while True:
+                choice = await asyncio.to_thread(input, "RedClaw Discovery> ")
+                if choice.lower() == "done":
+                    return await self.search_google_jobs(query)
+                if choice.lower() == "skip":
+                    return []
+            
+        return results[:10]
 
-    async def run_discovery(self) -> List[Dict[str, Any]]:
-        """Run the full discovery loop: Query -> Search -> Score -> Rank."""
-        print("\n[REDCLAW] Generating search queries from your profile...")
+        # 1. Start navigation immediately so user sees something happening
+        print("\n[REDCLAW] Initializing search... (Browser now navigating)")
+        await self.browser.navigate("https://www.google.com")
+        
+        # 2. Parallel: Generate queries while browser is ready
         queries = await self.generate_search_queries()
         
         all_jobs = []
-        for q in queries[:2]: # Limit to first 2 queries for demo/speed
+        for q in queries[:2]: 
             print(f"[REDCLAW] Searching for: '{q}'...")
             jobs = await self.search_google_jobs(q)
             all_jobs.extend(jobs)
