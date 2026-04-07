@@ -7,9 +7,9 @@ class LLMManager:
     """Wrapper for LM Studio's OpenAI-compatible API."""
     
     def __init__(self, api_key: str = LM_STUDIO_API_KEY, base_url: str = LM_STUDIO_HOST):
-        # V5.1: Added explicit timeouts to the client itself to prevent OS-level hangs
+        # V6.1: Generous timeouts for large local models (26B+ needs time)
         from httpx import Timeout
-        timeout = Timeout(10.0, connect=5.0) # 10s total, 5s for connection
+        timeout = Timeout(120.0, connect=10.0) # 120s for inference, 10s for connection
         self.client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
         print(f"[REDCLAW] AI Connection configured for {base_url}")
 
@@ -31,8 +31,7 @@ class LLMManager:
                 model=model,
                 messages=messages,
                 max_tokens=max_tokens,
-                temperature=temperature,
-                timeout=10 # Short timeout for local checks
+                temperature=temperature
             )
             return response.choices[0].message.content
         except Exception as e:

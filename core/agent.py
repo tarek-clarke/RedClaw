@@ -57,7 +57,7 @@ class RedClawAgent:
             prompt = self._build_prompt(goal, dom_snapshot)
             messages = [{"role": "user", "content": prompt}]
             try:
-                response = await asyncio.wait_for(asyncio.to_thread(self.llm.chat_completion, messages), timeout=20.0)
+                response = await asyncio.wait_for(asyncio.to_thread(self.llm.chat_completion, messages), timeout=90.0)
             except asyncio.TimeoutError:
                 print("[REDCLAW] AI timed out. Pausing for human help.")
                 response = "ASK_USER(\"AI is taking too long. Please assist.\")"
