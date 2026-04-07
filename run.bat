@@ -35,7 +35,12 @@ if not exist "resume.pdf" (
 )
 
 :: 6. Run Agent
-set /p GOAL="[REDCLAW] Enter your job application goal: "
-python main.py --goal "%GOAL%"
+if "%~1"=="" (
+    set /p GOAL="[REDCLAW] Enter your job application goal: "
+    python main.py --goal "%GOAL%"
+) else (
+    echo [REDCLAW] Running with arguments: %*
+    python main.py %*
+)
 
 pause
