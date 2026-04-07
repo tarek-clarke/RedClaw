@@ -2,7 +2,7 @@ import os
 import asyncio
 from typing import Optional, Dict, Any, List
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
-from config import HEADLESS, BROWSER_TIMEOUT, SCREENSHOT_PATH
+from config import HEADLESS, BROWSER_TIMEOUT, SCREENSHOT_PATH, SESSIONS_DIR
 
 class BrowserManager:
     """Wrapper for Playwright to handle browser automation with persistent session support."""
