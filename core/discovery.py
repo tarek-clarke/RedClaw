@@ -55,25 +55,39 @@ class JobDiscovery:
             if confirm.lower() == "done":
                 break
         
-        # Give a small buffer for JS rendering
-        await asyncio.sleep(2)
-        
-        # Broad selectors to catch various Google Job layouts
+        # 1. Adaptive Step: Check if we are in the 'Jobs' specialized UI
+        # If we see a 'Jobs' or 'More jobs' button, click it! (V3.5)
+        print("[REDCLAW] Adaptive Check: Entering Google Jobs UI...")
+        try:
+            # Try multiple selectors for the 'More jobs' link or Jobs header
+            job_link = await self.browser.page.query_selector("text='Jobs', text='More jobs', .jS7Vsc")
+            if job_link:
+                await job_link.click()
+                await asyncio.sleep(3)
+        except:
+            pass # Already there or not found
+            
+        # 2. Broad selectors to catch various Google Job layouts + General Search results
         results = await self.browser.page.evaluate('''() => {
             const listings = [];
-            // Try multiple common Google Job selectors
-            const items = document.querySelectorAll('div[data-job-id], .jF57fe, .B8S79c, .G67S8c, .vNEEBe');
+            // Try Job-UI specialized selectors first
+            let items = document.querySelectorAll('div[data-job-id], .jF57fe, .B8S79c, .G67S8c, .vNEEBe');
+            
+            // If nothing, try general search result containers (blue links) as fallback
+            if (items.length === 0) {
+                items = document.querySelectorAll('.g, .tF2Cxc, .yuRUbf, .WwS1y');
+            }
             
             items.forEach(item => {
-                const titleEl = item.querySelector('.Bj9u3e, .iYjOfc, .P8S79c, h2');
-                const companyEl = item.querySelector('.vNEEBe, .v76pQ');
+                const titleEl = item.querySelector('.Bj9u3e, .iYjOfc, .P8S79c, h2, h3');
+                const companyEl = item.querySelector('.vNEEBe, .v76pQ, .LC20lb, .UPmit');
                 
                 if (titleEl && titleEl.innerText.length > 3) {
                     listings.push({
                         title: titleEl.innerText,
-                        company: companyEl ? companyEl.innerText : 'Listed Company',
-                        snippet: item.innerText.slice(0, 300),
-                        link: window.location.href 
+                        company: companyEl ? companyEl.innerText : 'Unknown',
+                        snippet: item.innerText.slice(0, 400),
+                        link: item.querySelector('a')?.href || window.location.href 
                     });
                 }
             });
