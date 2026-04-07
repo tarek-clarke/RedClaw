@@ -6,6 +6,7 @@ from core.browser import BrowserManager
 from core.llm import LLMManager
 from core.agent import RedClawAgent
 from core.resume import ResumeManager
+from core.preflight import PreflightManager
 from config import LM_STUDIO_HOST, DEFAULT_MODEL_VISION
 
 def load_profile(path: str = "user_profile.json") -> dict:
