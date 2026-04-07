@@ -31,12 +31,12 @@ class RedClawAgent:
         plan = await asyncio.to_thread(self._generate_action_plan, goal)
         print(f"\n[REDCLAW] PROPOSED ACTION PLAN:\n{plan}")
         
-        if not await self._get_human_approval(plan):
+        if not await asyncio.to_thread(self._get_human_approval_sync, plan):
             print("\n[REDCLAW] Plan rejected. Exiting.")
-            self.logger.log_approval(plan, False, "Terminated by user")
+            self.logger.log_approval(str(plan), False, "Terminated by user")
             return
 
-        self.logger.log_approval(plan, True)
+        self.logger.log_approval(str(plan), True)
 
         while True:
             # 2. Observe
@@ -83,23 +83,22 @@ class RedClawAgent:
             await self._perform_action(response)
             await asyncio.sleep(1) # Small buffer between actions
 
-    async def _generate_action_plan(self, goal: str) -> str:
-        """Generate a structured plan for the task before execution."""
+    def _generate_action_plan(self, goal: str) -> str:
+        """Generate a structured plan for the task before execution. (Synchronous for threading)"""
         prompt = f"Generate a high-level step-by-step action plan to achieve this goal: {goal}. Focus on major milestones (e.g., Navigate, Detect Form, Fill, Pause for Submit)."
         messages = [{"role": "user", "content": prompt}]
         return self.llm.chat_completion(messages)
 
-    async def _get_human_approval(self, plan: str) -> bool:
-        """Request explicit human approval for the proposed plan."""
+    def _get_human_approval_sync(self, plan: str) -> bool:
+        """Request explicit human approval for the proposed plan. (Synchronous for threading)"""
         print("\n[REDCLAW] Do you approve this plan? (yes/no/edit)")
         while True:
-            response = await asyncio.to_thread(input, "RedClaw Approve> ")
+            response = input("RedClaw Approve> ")
             if response.lower() == "yes":
                 return True
             if response.lower() == "no":
                 return False
-            # If "edit", we could potentially regenerate or let user type extra instructions
-            print("Type 'yes' or 'no'. (In V2.1 'edit' will support direct plan revision)")
+            print("Type 'yes' or 'no'.")
 
     async def _perform_action(self, response: str):
         """Parse and execute the action string from the LLM."""
