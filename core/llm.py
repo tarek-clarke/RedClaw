@@ -63,9 +63,14 @@ class LLMManager:
             }
         ]
         
-        response = self.client.chat.completions.create(
-            model=model,
-            messages=messages,
-            max_tokens=max_tokens
-        )
-        return response.choices[0].message.content
+        try:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                timeout=30 # 30s timeout for vision tasks
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"[REDCLAW] Vision Brain Communication Error: {str(e)}")
+            return "ESC_HUMAN(\"Vision AI timed out. Switching to manual control.\")"

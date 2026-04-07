@@ -28,7 +28,16 @@ class RedClawAgent:
         
         # 1. Action Plan Preview (V2 Feature)
         print(f"[REDCLAW] Planning strategy for goal: {goal}...")
-        plan = await asyncio.to_thread(self._generate_action_plan, goal)
+        try:
+            # V4.9: Agent-level timeout so we never hang forever
+            plan = await asyncio.wait_for(asyncio.to_thread(self._generate_action_plan, goal), timeout=15.0)
+        except asyncio.TimeoutError:
+            print("[REDCLAW] AI Connection slow. Falling back to default 'Direct Form Analysis' strategy.")
+            plan = "1. Navigate to page. 2. Identify form fields. 3. Populate fields from profile. 4. Wait for manual review."
+        except Exception as e:
+            print(f"[REDCLAW] AI Offline ({str(e)}). Using local fallback strategy.")
+            plan = "1. Load page. 2. Auto-detect inputs. 3. Fill profile data."
+        
         print(f"\n[REDCLAW] PROPOSED ACTION PLAN:\n{plan}")
         
         if not await asyncio.to_thread(self._get_human_approval_sync, plan):
@@ -54,7 +63,11 @@ class RedClawAgent:
             # 3. Decide
             print("[REDCLAW] Consulting AI for next step... (Vision Brain thinking)")
             prompt = self._build_prompt(goal, accessibility_tree)
-            response = await asyncio.to_thread(self.llm.multimodal_completion, prompt, screenshot_path)
+            try:
+                response = await asyncio.wait_for(asyncio.to_thread(self.llm.multimodal_completion, prompt, screenshot_path), timeout=25.0)
+            except:
+                print("[REDCLAW] Vision Brain timed out. Falling back to 'HEURISTIC_FILL' mode.")
+                response = "ASK_USER(\"I'm having trouble seeing the page clearly. Please click a field for me.\")"
             
             print(f"\n[REDCLAW] Agent Decision: {response}")
             self.logger.log("decision", {"response": response, "screenshot": screenshot_path})
