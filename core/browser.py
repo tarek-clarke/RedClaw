@@ -5,31 +5,35 @@ from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 from config import HEADLESS, BROWSER_TIMEOUT, SCREENSHOT_PATH
 
 class BrowserManager:
-    """Wrapper for Playwright to handle browser automation."""
+    """Wrapper for Playwright to handle browser automation with persistent session support."""
     
-    def __init__(self, headless: bool = HEADLESS):
+    def __init__(self, headless: bool = HEADLESS, session_name: str = "default"):
         self.headless = headless
+        self.session_name = session_name
+        self.user_data_dir = os.path.join(SESSIONS_DIR, self.session_name)
+        os.makedirs(self.user_data_dir, exist_ok=True)
+        
         self.playwright = None
-        self.browser = None
-        self.context = None
+        self.browser = None # For context-less sessions if needed
+        self.context = None # Main persistent context
         self.page = None
 
     async def start(self):
-        """Initialize the browser."""
+        """Initialize the browser with persistent context."""
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(
-            headless=self.headless
-            # channel="chrome" # Uncomment if you want to use your local Chrome
+        
+        self.context = await self.playwright.chromium.launch_persistent_context(
+            user_data_dir=self.user_data_dir,
+            headless=self.headless,
+            viewport={"width": 1280, "height": 720},
+            ignore_https_errors=True
         )
-        self.context = await self.browser.new_context(
-            viewport={"width": 1280, "height": 720}
-        )
-        self.page = await self.context.new_page()
+        self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
 
     async def stop(self):
         """Cleanup."""
-        if self.browser:
-            await self.browser.close()
+        if self.context:
+            await self.context.close()
         if self.playwright:
             await self.playwright.stop()
 

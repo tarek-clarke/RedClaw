@@ -20,23 +20,28 @@ def load_profile(path: str = "user_profile.json") -> dict:
 @click.option("--goal", prompt="What task should RedClaw perform?", help="The goal for the agent.")
 @click.option("--url", default="https://www.google.com", help="Initial URL.")
 @click.option("--resume", default="resume.pdf", help="Path to your PDF resume.")
-def main(goal: str, url: str, resume: str):
+@click.option("--dry-run", is_flag=True, help="Run without clicking final submit.")
+@click.option("--session", default="default", help="Persistent browser session name.")
+def main(goal: str, url: str, resume: str, dry_run: bool, session: str):
     """RedClaw: Local Browser Agent for AMD users."""
     
     # Load user data
     profile = load_profile()
     resume_text = ResumeManager.extract_text(resume) or ""
     
-    asyncio.run(run_redclaw(goal, url, resume_text, profile))
+    asyncio.run(run_redclaw(goal, url, resume_text, profile, dry_run, session))
 
-async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict):
+async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_run: bool, session_name: str):
     # 1. Setup
     print(f"\n[REDCLAW] Connecting to LM Studio at {LM_STUDIO_HOST}...")
     print(f"[REDCLAW] (If LM Studio is on another PC, update config.py with the PC's IP address)")
     
-    browser = BrowserManager(headless=False)
+    if dry_run:
+        print("[REDCLAW] DRY-RUN MODE ACTIVE: No submissions will be made.")
+
+    browser = BrowserManager(headless=False, session_name=session_name)
     llm = LLMManager()
-    agent = RedClawAgent(browser, llm, resume_text=resume_text, profile_data=profile)
+    agent = RedClawAgent(browser, llm, resume_text=resume_text, profile_data=profile, dry_run=dry_run)
     
     try:
         await browser.start()
