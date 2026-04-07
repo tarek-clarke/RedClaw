@@ -45,8 +45,18 @@ class JobDiscovery:
         search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}+jobs"
         await self.browser.navigate(search_url)
         
-        # Wait for results or human intervention
-        await asyncio.sleep(4)
+        # V3.4 Synchronization: Wait for user to confirm results are visible
+        print(f"\n[REDCLAW] SEARCH LOADED: '{query}'")
+        print("[REDCLAW] If you see a CAPTCHA, please solve it.")
+        print("[REDCLAW] Once you see the job listings, type 'done' to extract them.")
+        
+        while True:
+            confirm = await asyncio.to_thread(input, "RedClaw Sync> ")
+            if confirm.lower() == "done":
+                break
+        
+        # Give a small buffer for JS rendering
+        await asyncio.sleep(2)
         
         # Broad selectors to catch various Google Job layouts
         results = await self.browser.page.evaluate('''() => {
