@@ -7,7 +7,11 @@ class LLMManager:
     """Wrapper for LM Studio's OpenAI-compatible API."""
     
     def __init__(self, api_key: str = LM_STUDIO_API_KEY, base_url: str = LM_STUDIO_HOST):
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
+        # V5.1: Added explicit timeouts to the client itself to prevent OS-level hangs
+        from httpx import Timeout
+        timeout = Timeout(10.0, connect=5.0) # 10s total, 5s for connection
+        self.client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+        print(f"[REDCLAW] AI Connection configured for {base_url}")
 
     def encode_image(self, image_path: str) -> str:
         """Encode image to base64 for multimodal input."""
