@@ -25,7 +25,15 @@ def load_profile(path: str = "user_profile.json") -> dict:
 @click.option("--session", default="default", help="Persistent browser session name.")
 @click.option("--url-file", default=None, help="Path to a text file containing job URLs (one per line).")
 @click.option("--discover", is_flag=True, help="Search for new jobs based on your profile.")
-def main(goal: str, url: str, resume: str, dry_run: bool, session: str, url_file: str, discover: bool):
+def main(
+    goal: str = "Find and apply for senior ML roles", 
+    url: str = None, 
+    resume: str = "resume.pdf", 
+    dry_run: bool = False, 
+    session: str = "default", 
+    url_file: str = None, 
+    discover: bool = False
+):
     """RedClaw: Local Browser Agent for AMD users."""
     
     # Load user data
