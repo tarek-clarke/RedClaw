@@ -63,10 +63,30 @@ class BrowserManager:
         return path
 
     async def get_accessibility_tree(self) -> str:
-        """Extract DOM information for reasoning."""
-        # Simple placeholder for accessibility tree
-        snapshot = await self.page.accessibility.snapshot()
-        return str(snapshot)
+        """Extract DOM information for reasoning with version-proof fallbacks."""
+        import json
+        try:
+            # Try standard Playwright API first
+            if hasattr(self.page, "accessibility"):
+                snapshot = await self.page.accessibility.snapshot()
+                return json.dumps(snapshot, indent=2)
+            
+            # Fallback: Universal DOM-based tree (V4.7)
+            print("[REDCLAW] Using DOM fallback for accessibility tree...")
+            tree_data = await self.page.evaluate('''() => {
+                const getTree = (el) => {
+                    if (!el) return null;
+                    const role = el.getAttribute('role') || el.tagName.toLowerCase();
+                    const name = el.getAttribute('aria-label') || el.innerText || el.value || '';
+                    if (['script', 'style'].includes(role)) return null;
+                    return { role, name: name.slice(0, 100), children: Array.from(el.children).map(getTree).filter(Boolean) };
+                };
+                return getTree(document.body);
+            }''')
+            return json.dumps(tree_data, indent=2)
+        except Exception as e:
+            print(f"[REDCLAW] Accessibility Warning: {str(e)}")
+            return "{}"
 
     async def click(self, selector: str):
         """Perform click action."""
