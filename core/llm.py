@@ -21,14 +21,22 @@ class LLMManager:
         max_tokens: int = 1000,
         temperature: float = 0.0
     ) -> str:
-        """Standard chat completion (text-only)."""
-        response = self.client.chat.completions.create(
-            model=model,
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature
-        )
-        return response.choices[0].message.content
+        """Standard chat completion (text-only) with graceful error handling."""
+        try:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                timeout=10 # Short timeout for local checks
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"\n[REDCLAW] ERROR: Could not connect to LM Studio at {self.client.base_url}")
+            print(f"[REDCLAW] TIP: 1. Is LM Studio open? 2. Is the 'Local Server' started? 3. Is the port 1234?")
+            if "10061" in str(e):
+                print(f"[REDCLAW] DETAIL: The target machine actively refused the connection.")
+            raise e
 
     def multimodal_completion(
         self, 
