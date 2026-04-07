@@ -63,30 +63,69 @@ class BrowserManager:
         return path
 
     async def get_accessibility_tree(self) -> str:
-        """Extract DOM information for reasoning with version-proof fallbacks."""
+        """Extract form-aware DOM snapshot for text-only LLM reasoning (V6.0)."""
         import json
         try:
-            # Try standard Playwright API first
-            if hasattr(self.page, "accessibility"):
-                snapshot = await self.page.accessibility.snapshot()
-                return json.dumps(snapshot, indent=2)
-            
-            # Fallback: Universal DOM-based tree (V4.7)
-            print("[REDCLAW] Using DOM fallback for accessibility tree...")
             tree_data = await self.page.evaluate('''() => {
-                const getTree = (el) => {
-                    if (!el) return null;
-                    const role = el.getAttribute('role') || el.tagName.toLowerCase();
-                    const name = el.getAttribute('aria-label') || el.innerText || el.value || '';
-                    if (['script', 'style'].includes(role)) return null;
-                    return { role, name: name.slice(0, 100), children: Array.from(el.children).map(getTree).filter(Boolean) };
-                };
-                return getTree(document.body);
+                const results = { inputs: [], buttons: [], links: [], headings: [], page_title: document.title, url: location.href };
+                
+                // Extract all form inputs
+                document.querySelectorAll('input, select, textarea').forEach((el, i) => {
+                    const label = el.closest('label')?.innerText 
+                        || document.querySelector('label[for="' + el.id + '"]')?.innerText
+                        || el.getAttribute('aria-label')
+                        || el.getAttribute('placeholder')
+                        || el.getAttribute('name')
+                        || ('unnamed_field_' + i);
+                    results.inputs.push({
+                        index: i,
+                        tag: el.tagName.toLowerCase(),
+                        type: el.getAttribute('type') || 'text',
+                        name: el.getAttribute('name') || '',
+                        id: el.id || '',
+                        label: label.trim().slice(0, 80),
+                        placeholder: el.getAttribute('placeholder') || '',
+                        value: el.value || '',
+                        required: el.required,
+                        selector: el.id ? '#' + el.id : (el.name ? '[name="' + el.name + '"]' : 'input:nth-of-type(' + (i+1) + ')')
+                    });
+                });
+                
+                // Extract all buttons
+                document.querySelectorAll('button, [role="button"], input[type="submit"]').forEach((el, i) => {
+                    results.buttons.push({
+                        index: i,
+                        text: (el.innerText || el.value || '').trim().slice(0, 50),
+                        type: el.getAttribute('type') || 'button',
+                        selector: el.id ? '#' + el.id : 'button:nth-of-type(' + (i+1) + ')'
+                    });
+                });
+                
+                // Extract page headings for context
+                document.querySelectorAll('h1, h2, h3').forEach(el => {
+                    results.headings.push(el.innerText.trim().slice(0, 100));
+                });
+                
+                return results;
             }''')
-            return json.dumps(tree_data, indent=2)
+            
+            summary = f"PAGE: {tree_data.get('page_title', 'Unknown')} ({tree_data.get('url', '')})\n"
+            summary += f"HEADINGS: {', '.join(tree_data.get('headings', []))}\n\n"
+            
+            summary += "FORM FIELDS:\n"
+            for inp in tree_data.get('inputs', []):
+                filled = f" [FILLED: '{inp['value']}']" if inp['value'] else " [EMPTY]"
+                req = " *REQUIRED*" if inp.get('required') else ""
+                summary += f"  [{inp['index']}] {inp['label']} (type={inp['type']}, selector=\"{inp['selector']}\"){filled}{req}\n"
+            
+            summary += "\nBUTTONS:\n"
+            for btn in tree_data.get('buttons', []):
+                summary += f"  [{btn['index']}] \"{btn['text']}\" (selector=\"{btn['selector']}\")\n"
+            
+            return summary
         except Exception as e:
-            print(f"[REDCLAW] Accessibility Warning: {str(e)}")
-            return "{}"
+            print(f"[REDCLAW] DOM Scan Warning: {str(e)}")
+            return "ERROR: Could not scan page DOM."
 
     async def click(self, selector: str):
         """Perform click action."""

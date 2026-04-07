@@ -48,29 +48,31 @@ class RedClawAgent:
         self.logger.log_approval(str(plan), True)
 
         while True:
-            # 2. Observe
-            print("[REDCLAW] Observing screen... (Taking screenshot)")
-            screenshot_path = await self.browser.take_screenshot("current_state.png")
-            print("[REDCLAW] Analyzing accessibility tree...")
-            accessibility_tree = await self.browser.get_accessibility_tree()
+            # 2. Observe (V6.0: Text-only DOM scan, no screenshots needed)
+            print("[REDCLAW] Scanning page DOM for form fields...")
+            dom_snapshot = await self.browser.get_accessibility_tree()
             
             # 2.1 CAPTCHA Check (V2.5)
-            if self.safety.is_captcha_present(accessibility_tree):
+            if self.safety.is_captcha_present(dom_snapshot):
                 print(f"\n[REDCLAW] SAFETY TRIGGER: CAPTCHA detected. Pausing for human intervention.")
                 await self.browser.wait_for_user()
                 continue
 
-            # 3. Decide
-            print("[REDCLAW] Consulting AI for next step... (Vision Brain thinking)")
-            prompt = self._build_prompt(goal, accessibility_tree)
+            # 3. Decide (V6.0: Pure text reasoning — no vision model needed)
+            print("[REDCLAW] Consulting AI for next step... (Text Brain thinking)")
+            prompt = self._build_prompt(goal, dom_snapshot)
+            messages = [{"role": "user", "content": prompt}]
             try:
-                response = await asyncio.wait_for(asyncio.to_thread(self.llm.multimodal_completion, prompt, screenshot_path), timeout=25.0)
-            except:
-                print("[REDCLAW] Vision Brain timed out. Falling back to 'HEURISTIC_FILL' mode.")
-                response = "ASK_USER(\"I'm having trouble seeing the page clearly. Please click a field for me.\")"
+                response = await asyncio.wait_for(asyncio.to_thread(self.llm.chat_completion, messages), timeout=20.0)
+            except asyncio.TimeoutError:
+                print("[REDCLAW] AI timed out. Pausing for human help.")
+                response = "ASK_USER(\"AI is taking too long. Please assist.\")"
+            except Exception as e:
+                print(f"[REDCLAW] AI Error: {str(e)}")
+                response = "ASK_USER(\"AI encountered an error. Please assist.\")"
             
             print(f"\n[REDCLAW] Agent Decision: {response}")
-            self.logger.log("decision", {"response": response, "screenshot": screenshot_path})
+            self.logger.log("decision", {"response": response})
             
             # 4. Safety & HITL Check
             if self.safety.should_pause_before_action("DECISION", response):
@@ -150,39 +152,36 @@ class RedClawAgent:
             print(f"[REDCLAW] Action Error: {str(e)}")
             self.logger.log("action_error", {"error": str(e), "action": response})
 
-    def _build_prompt(self, goal: str, accessibility_tree: str) -> str:
-        """Construct the prompt for the multi-modal model with the full profile context."""
-        
-        # Serialize the entire profile for the LLM to use dynamically
+    def _build_prompt(self, goal: str, dom_snapshot: str) -> str:
+        """Build a text-only prompt using DOM form data (V6.0 — no vision needed)."""
         profile_json = json.dumps(self.profile_data, indent=2)
 
-        return f"""
-YOU ARE REDCLAW, A UNIVERSAL BROWSER ASSISTANT FOR AMD USERS.
-YOUR GOAL: {goal}
+        return f"""YOU ARE REDCLAW, an autonomous browser agent filling out a web form.
+GOAL: {goal}
 
-USER PROFILE DATA:
+USER PROFILE (use these values to fill fields):
 {profile_json}
 
-RESUME CONTEXT (FOR JOB TASKS):
-{self.resume_text[:2000]}
+RESUME EXCERPT:
+{self.resume_text[:1500]}
 
-ACCESSIBILITY TREE:
-{accessibility_tree}
+CURRENT PAGE DOM:
+{dom_snapshot}
 
-OBSERVE THE SCREENSHOT AND DECIDE THE NEXT STEP.
+RULES:
+- Pick ONE action per response. Output ONLY the action, nothing else.
+- Use the exact "selector" values from the DOM above.
+- Fill ONE empty field at a time, starting from the top.
+- If a field is already [FILLED], skip it.
+- For file upload fields (type=file), use ASK_USER("Please upload resume manually").
+- For dropdowns/selects, use CLICK(selector) first, then TYPE the option.
+- For SUBMIT/APPLY buttons, ALWAYS use ASK_USER("Ready to submit. Please review.").
+- If all fields are filled, output COMPLETE().
+
 AVAILABLE ACTIONS:
-- CLICK(selector)
-- TYPE(selector, text)
-- NAVIGATION(url)
-- ASK_USER("summary") (Escalate for human help)
-- COMPLETE()
+- TYPE("selector", "value") — fill a text field
+- CLICK("selector") — click a button or element
+- ASK_USER("message") — pause for human help
+- COMPLETE() — all done
 
-STRATEGY:
-1. MATCH FORM FIELDS ON SCREEN TO VALUES IN THE "USER PROFILE DATA".
-2. USE THE "RESUME CONTEXT" ONLY IF THE TASK IS JOB-RELATED OR REQUIRES WORK HISTORY.
-3. USE ASK_USER IF A FIELD REQUIRES DATA YOU DO NOT HAVE.
-4. FOR CRITICAL BUTTONS (SUBMIT, APPLY, FINISH, BUY, PAY), USE ASK_USER("Ready for final review").
-5. ALWAYS BE CONCISE.
-
-NEXT ACTION:
-"""
+NEXT ACTION:"""
