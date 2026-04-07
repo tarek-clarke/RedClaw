@@ -19,18 +19,31 @@ def load_profile(path: str = "user_profile.json") -> dict:
 
 @click.command()
 @click.option("--goal", default="Find and apply for senior ML roles", help="The goal for the agent.")
-@click.option("--url", default=None, help="Initial URL (skips discovery if provided).")
-@click.option("--resume", default="resume.pdf", help="Path to your PDF resume.")
-@click.option("--dry-run", is_flag=True, help="Run without clicking final submit.")
-@click.option("--session", default="default", help="Persistent browser session name.")
+@click.option("--url-file", default=None, help="Path to a text file containing job URLs (one per line).")
 @click.option("--discover", is_flag=True, help="Search for new jobs based on your profile.")
-def main(goal: str, url: str, resume: str, dry_run: bool, session: str, discover: bool):
+def main(goal: str, url: str, resume: str, dry_run: bool, session: str, url_file: str, discover: bool):
     """RedClaw: Local Browser Agent for AMD users."""
     
     # Load user data
     profile = load_profile()
     resume_text = ResumeManager.extract_text(resume) or ""
     
+    # 1. Handle Batch Mode (URL File)
+    if url_file:
+        if os.path.exists(url_file):
+            print(f"[REDCLAW] Batch Mode: Loading links from {url_file}...")
+            with open(url_file, "r") as f:
+                urls = [line.strip() for line in f if line.strip()]
+            
+            for i, target_url in enumerate(urls):
+                print(f"\n[REDCLAW] Processing Job {i+1}/{len(urls)}: {target_url}")
+                asyncio.run(run_redclaw(goal, target_url, resume_text, profile, dry_run, session, False))
+            return
+        else:
+            print(f"[REDCLAW] Error: URL file {url_file} not found.")
+            return
+
+    # 2. Standard Single-Run Mode
     asyncio.run(run_redclaw(goal, url, resume_text, profile, dry_run, session, discover))
 
 async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_run: bool, session_name: str, discover: bool):
