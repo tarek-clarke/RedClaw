@@ -39,8 +39,15 @@ class BrowserManager:
             await self.playwright.stop()
 
     async def navigate(self, url: str):
-        """Navigate to a URL and check for safety/captchas."""
-        await self.page.goto(url, timeout=BROWSER_TIMEOUT)
+        """Navigate to a URL and check for safety/captchas with performance optimization."""
+        print(f"[REDCLAW] Navigating to target URL: {url}")
+        try:
+            # V4.5 Optimization: Wait for DOM instead of full network idle to avoid tracker hangs
+            await self.page.goto(url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+            # Give short extra stabilization time
+            await asyncio.sleep(2)
+        except Exception as e:
+            print(f"[REDCLAW] Navigation Warning (Timeout or Error): {str(e)}")
         
         # Immediate CAPTCHA check after any navigation (V2.6)
         safety = SafetyPolicy()

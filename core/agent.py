@@ -27,7 +27,8 @@ class RedClawAgent:
         self.logger.log("task_start", {"goal": goal, "dry_run": self.dry_run})
         
         # 1. Action Plan Preview (V2 Feature)
-        plan = await self._generate_action_plan(goal)
+        print(f"[REDCLAW] Planning strategy for goal: {goal}...")
+        plan = await asyncio.to_thread(self._generate_action_plan, goal)
         print(f"\n[REDCLAW] PROPOSED ACTION PLAN:\n{plan}")
         
         if not await self._get_human_approval(plan):
@@ -39,7 +40,9 @@ class RedClawAgent:
 
         while True:
             # 2. Observe
+            print("[REDCLAW] Observing screen... (Taking screenshot)")
             screenshot_path = await self.browser.take_screenshot("current_state.png")
+            print("[REDCLAW] Analyzing accessibility tree...")
             accessibility_tree = await self.browser.get_accessibility_tree()
             
             # 2.1 CAPTCHA Check (V2.5)
@@ -49,8 +52,9 @@ class RedClawAgent:
                 continue
 
             # 3. Decide
+            print("[REDCLAW] Consulting AI for next step... (Vision Brain thinking)")
             prompt = self._build_prompt(goal, accessibility_tree)
-            response = self.llm.multimodal_completion(prompt, screenshot_path)
+            response = await asyncio.to_thread(self.llm.multimodal_completion, prompt, screenshot_path)
             
             print(f"\n[REDCLAW] Agent Decision: {response}")
             self.logger.log("decision", {"response": response, "screenshot": screenshot_path})
