@@ -46,31 +46,37 @@ async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_
     agent = RedClawAgent(browser, llm, resume_text=resume_text, profile_data=profile, dry_run=dry_run)
     
     try:
+        print(f"[REDCLAW] Initializing browser (session: {session_name})...")
         await browser.start()
         
-        # 2. Discovery Mode (V2.2)
-        if discover and not url:
+        # 2. Discovery Mode (V2.3 - Autostart if no URL)
+        if (discover or not url):
+            print("[REDCLAW] No URL provided. Launching Job Discovery Mode...")
             from core.discovery import JobDiscovery
             discovery = JobDiscovery(browser, llm, preflight)
             ranked_jobs = await discovery.run_discovery()
             
+            if not ranked_jobs:
+                print("[REDCLAW] No jobs found during discovery. Try a different goal.")
+                return
+
             print("\n[REDCLAW] DISCOVERY REPORT (Top Recommendations):")
             for i, job in enumerate(ranked_jobs[:5]):
                 print(f"{i+1}. {job['title']} at {job['company']} (Score: {job['score']}/100)")
                 print(f"   Fit: {job['recommendation']}")
             
-            # For simplicity in V2.2, we just take the top job if user approves
             print("\n[REDCLAW] Enter the number of the job you want to target (or 'none'):")
             choice = await asyncio.to_thread(input, "RedClaw Target> ")
             if choice.isdigit() and int(choice) <= len(ranked_jobs):
                 url = ranked_jobs[int(choice)-1]['link']
                 print(f"[REDCLAW] Targeting: {url}")
             else:
-                print("[REDCLAW] Discovery phase ended.")
+                print("[REDCLAW] Task ended by user.")
                 return
 
         # 3. Start Application Flow
         if url:
+            print(f"[REDCLAW] Navigating to: {url}")
             await browser.navigate(url)
             await agent.run_task(goal)
         
