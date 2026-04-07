@@ -75,8 +75,9 @@ class RedClawAgent:
                 self.logger.log("task_complete", {})
                 break
                 
-            # 6. Action Execution (Placeholder)
-            await asyncio.sleep(2)
+            # 6. Action Execution (V4.4 Implementation)
+            await self._perform_action(response)
+            await asyncio.sleep(1) # Small buffer between actions
 
     async def _generate_action_plan(self, goal: str) -> str:
         """Generate a structured plan for the task before execution."""
@@ -95,6 +96,30 @@ class RedClawAgent:
                 return False
             # If "edit", we could potentially regenerate or let user type extra instructions
             print("Type 'yes' or 'no'. (In V2.1 'edit' will support direct plan revision)")
+
+    async def _perform_action(self, response: str):
+        """Parse and execute the action string from the LLM."""
+        try:
+            if "CLICK(" in response:
+                selector = response.split("CLICK(")[1].split(")")[0].strip("'\"")
+                print(f"[REDCLAW] Action: Clicking {selector}")
+                await self.browser.page.click(selector, timeout=5000)
+                
+            elif "TYPE(" in response:
+                parts = response.split("TYPE(")[1].split(")") [0].split(",")
+                selector = parts[0].strip().strip("'\"")
+                text = parts[1].strip().strip("'\"")
+                print(f"[REDCLAW] Action: Typing into {selector}")
+                await self.browser.page.fill(selector, text, timeout=5000)
+                
+            elif "NAVIGATION(" in response:
+                url = response.split("NAVIGATION(")[1].split(")")[0].strip("'\"")
+                print(f"[REDCLAW] Action: Navigating to {url}")
+                await self.browser.navigate(url)
+                
+        except Exception as e:
+            print(f"[REDCLAW] Action Error: {str(e)}")
+            self.logger.log("action_error", {"error": str(e), "action": response})
 
     def _build_prompt(self, goal: str, accessibility_tree: str) -> str:
         """Construct the prompt for the multi-modal model with the full profile context."""
