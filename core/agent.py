@@ -51,12 +51,6 @@ class RedClawAgent:
             # 2. Observe (V6.0: Text-only DOM scan, no screenshots needed)
             print("[REDCLAW] Scanning page DOM for form fields...")
             dom_snapshot = await self.browser.get_accessibility_tree()
-            
-            # 2.1 CAPTCHA Check (V2.5)
-            if self.safety.is_captcha_present(dom_snapshot):
-                print(f"\n[REDCLAW] SAFETY TRIGGER: CAPTCHA detected. Pausing for human intervention.")
-                await self.browser.wait_for_user()
-                continue
 
             # 3. Decide (V6.0: Pure text reasoning — no vision model needed)
             print("[REDCLAW] Consulting AI for next step... (Text Brain thinking)")
