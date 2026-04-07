@@ -19,6 +19,10 @@ def load_profile(path: str = "user_profile.json") -> dict:
 
 @click.command()
 @click.option("--goal", default="Find and apply for senior ML roles", help="The goal for the agent.")
+@click.option("--url", default=None, help="Initial URL (skips discovery if provided).")
+@click.option("--resume", default="resume.pdf", help="Path to your PDF resume.")
+@click.option("--dry-run", is_flag=True, help="Run without clicking final submit.")
+@click.option("--session", default="default", help="Persistent browser session name.")
 @click.option("--url-file", default=None, help="Path to a text file containing job URLs (one per line).")
 @click.option("--discover", is_flag=True, help="Search for new jobs based on your profile.")
 def main(goal: str, url: str, resume: str, dry_run: bool, session: str, url_file: str, discover: bool):
