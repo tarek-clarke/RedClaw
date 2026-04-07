@@ -147,35 +147,44 @@ class RedClawAgent:
             self.logger.log("action_error", {"error": str(e), "action": response})
 
     def _build_prompt(self, goal: str, dom_snapshot: str) -> str:
-        """Build a text-only prompt using DOM form data (V6.0 — no vision needed)."""
-        profile_json = json.dumps(self.profile_data, indent=2)
+        """Build a compact text-only prompt that fits in small context windows (V6.1)."""
+        # Flatten profile to key=value pairs instead of full JSON
+        profile_lines = []
+        for key, val in self.profile_data.items():
+            if isinstance(val, dict):
+                for k2, v2 in val.items():
+                    profile_lines.append(f"  {key}.{k2}: {v2}")
+            elif isinstance(val, list):
+                profile_lines.append(f"  {key}: {', '.join(str(v) for v in val)}")
+            else:
+                profile_lines.append(f"  {key}: {val}")
+        profile_text = "\n".join(profile_lines[:20])  # Cap at 20 fields
 
-        return f"""YOU ARE REDCLAW, an autonomous browser agent filling out a web form.
-GOAL: {goal}
+        # Truncate DOM to fit context
+        dom_trimmed = dom_snapshot[:2000]
 
-USER PROFILE (use these values to fill fields):
-{profile_json}
+        return f"""You are REDCLAW, a browser agent filling a web form.
 
-RESUME EXCERPT:
-{self.resume_text[:1500]}
+PROFILE:
+{profile_text}
 
-CURRENT PAGE DOM:
-{dom_snapshot}
+PAGE:
+{dom_trimmed}
 
 RULES:
-- Pick ONE action per response. Output ONLY the action, nothing else.
-- Use the exact "selector" values from the DOM above.
-- Fill ONE empty field at a time, starting from the top.
-- If a field is already [FILLED], skip it.
-- For file upload fields (type=file), use ASK_USER("Please upload resume manually").
-- For dropdowns/selects, use CLICK(selector) first, then TYPE the option.
-- For SUBMIT/APPLY buttons, ALWAYS use ASK_USER("Ready to submit. Please review.").
-- If all fields are filled, output COMPLETE().
+- Output ONE action only. No explanation.
+- Use exact selector values from PAGE above.
+- Fill the first EMPTY field from the top.
+- Skip [FILLED] fields.
+- For file uploads: ASK_USER("Please upload resume manually")
+- For Submit/Apply buttons: ASK_USER("Ready to submit. Please review.")
+- When all fields are filled: COMPLETE()
 
-AVAILABLE ACTIONS:
-- TYPE("selector", "value") — fill a text field
-- CLICK("selector") — click a button or element
-- ASK_USER("message") — pause for human help
-- COMPLETE() — all done
+ACTIONS:
+- TYPE("selector", "value")
+- CLICK("selector")
+- ASK_USER("message")
+- COMPLETE()
 
 NEXT ACTION:"""
+
