@@ -1,16 +1,30 @@
 {
-  "full_name": "Applicant Name",
-  "email": "email@example.com",
-  "phone": "+1-234-567-8900",
-  "links": {
-    "linkedin": "https://www.linkedin.com/in/your-profile",
-    "github": "https://github.com/your-username",
-    "website": "https://your-portfolio.com"
+  "personal_info": {
+    "full_name": "Tarek Clarke",
+    "email": "tarek@example.com",
+    "phone": "+1-555-0123",
+    "address": "123 Research Lane, New York, NY 10001",
+    "links": {
+      "github": "https://github.com/tarek-clarke",
+      "linkedin": "https://linkedin.com/in/tarek-clarke",
+      "portfolio": "https://tarek.me"
+    }
   },
-  "key_highlights": [
-    "PhD Researcher specialized in Resilient Frameworks.",
-    "Creator of the RedClaw Autonomous Browser Agent.",
-    "Expert in local LLM deployment on AMD hardware."
-  ],
-  "phd_focus": "Resilient RAP Framework for reconcilement and data integrity."
+  "job_search_data": {
+    "phd_focus": "Resilient Reconnaissance and Autonomous Planning (RAP)",
+    "key_highlights": [
+      "Creator of the Resilient RAP Framework",
+      "Specialist in Local LLM orchestration for AMD GPUs",
+      "Deep experience with Playwright and Browser Automation"
+    ],
+    "salary_expectations": "Competitive",
+    "work_authorization": "Authorized to work in the US",
+    "willingness_to_relocate": "No"
+  },
+  "general_data": {
+    "contest_entry_essay": "I am passionate about local-first AI and believe that RedClaw is the future of private web automation.",
+    "shirt_size": "Large",
+    "twitter_handle": "@tarek_clarke",
+    "discord_id": "Tarek#1234"
+  }
 }

@@ -1,5 +1,6 @@
 import asyncio
 import os
+import json
 from typing import Optional, Dict, Any, List
 from core.browser import BrowserManager
 from core.llm import LLMManager
@@ -90,23 +91,19 @@ class RedClawAgent:
             print("Type 'yes' or 'no'. (In V2.1 'edit' will support direct plan revision)")
 
     def _build_prompt(self, goal: str, accessibility_tree: str) -> str:
-        """Construct the prompt for the multi-modal model with resume context."""
+        """Construct the prompt for the multi-modal model with the full profile context."""
         
-        profile_summary = f"""
-        NAME: {self.profile_data.get('full_name', 'Not Provided')}
-        LINKS: {self.profile_data.get('links', {})}
-        HIGHLIGHTS: {self.profile_data.get('key_highlights', [])}
-        PHD FOCUS: {self.profile_data.get('phd_focus', 'Not Provided')}
-        """
+        # Serialize the entire profile for the LLM to use dynamically
+        profile_json = json.dumps(self.profile_data, indent=2)
 
         return f"""
-YOU ARE REDCLAW, A BROWSER ASSISTANT FOR AMD USERS.
+YOU ARE REDCLAW, A UNIVERSAL BROWSER ASSISTANT FOR AMD USERS.
 YOUR GOAL: {goal}
 
-USER PROFILE:
-{profile_summary}
+USER PROFILE DATA:
+{profile_json}
 
-RESUME TEXT:
+RESUME CONTEXT (FOR JOB TASKS):
 {self.resume_text[:2000]}
 
 ACCESSIBILITY TREE:
@@ -120,11 +117,12 @@ AVAILABLE ACTIONS:
 - ASK_USER("summary") (Escalate for human help)
 - COMPLETE()
 
-SAFETY & STRATEGY:
-1. USE ASK_USER IF YOU ARE UNSURE ABOUT A FIELD OR LOGIC.
-2. HIGHLIGHT THE RESILIENT RAP FRAMEWORK FOR PhD-RELATED QUESTIONS.
-3. NEVER CLICK "SUBMIT" OR "FINISH". INSTEAD, USE ASK_USER("Ready for final review").
-4. ALWAYS BE CONCISE IN FORM FIELDS.
+STRATEGY:
+1. MATCH FORM FIELDS ON SCREEN TO VALUES IN THE "USER PROFILE DATA".
+2. USE THE "RESUME CONTEXT" ONLY IF THE TASK IS JOB-RELATED OR REQUIRES WORK HISTORY.
+3. USE ASK_USER IF A FIELD REQUIRES DATA YOU DO NOT HAVE.
+4. FOR CRITICAL BUTTONS (SUBMIT, APPLY, FINISH, BUY, PAY), USE ASK_USER("Ready for final review").
+5. ALWAYS BE CONCISE.
 
 NEXT ACTION:
 """
