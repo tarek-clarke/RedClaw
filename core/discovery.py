@@ -33,6 +33,9 @@ class JobDiscovery:
         try:
             # We'll try to get a response, but we have fallbacks
             response = self.llm.chat_completion(messages)
+            # Basic cleaning in case LLM wraps in markdown
+            if "```json" in response:
+                response = response.split("```json")[1].split("```")[0].strip()
             return json.loads(response)
         except Exception as e:
             print(f"[REDCLAW] LLM Fallback: Using default profile-based queries.")
@@ -55,7 +58,7 @@ class JobDiscovery:
             
             items.forEach(item => {
                 const titleEl = item.querySelector('.Bj9u3e, .iYjOfc, .P8S79c, h2');
-                const companyEl = item.querySelector('.vNEEBe, .v76pQ, .v76pQ');
+                const companyEl = item.querySelector('.vNEEBe, .v76pQ');
                 
                 if (titleEl && titleEl.innerText.length > 3) {
                     listings.push({
@@ -82,6 +85,8 @@ class JobDiscovery:
             
         return results[:10]
 
+    async def run_discovery(self) -> List[Dict[str, Any]]:
+        """Run the full discovery loop: Query -> Search -> Score -> Rank."""
         # 1. Start navigation immediately so user sees something happening
         print("\n[REDCLAW] Initializing search... (Browser now navigating)")
         await self.browser.navigate("https://www.google.com")
@@ -95,7 +100,11 @@ class JobDiscovery:
             jobs = await self.search_google_jobs(q)
             all_jobs.extend(jobs)
         
-        # Scored and ranked jobs
+        if not all_jobs:
+            return []
+
+        # 3. Scored and ranked jobs
+        print(f"\n[REDCLAW] Scoring {len(all_jobs)} jobs for profile fit...")
         scored_jobs = []
         for job in all_jobs:
             score_data = await self.preflight.get_job_fit_score(job['snippet'])
