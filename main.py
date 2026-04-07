@@ -62,6 +62,13 @@ def main(
     asyncio.run(run_redclaw(goal, url, resume_text, profile, dry_run, session, discover))
 
 async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_run: bool, session_name: str, discover: bool):
+    """Execution logic for a single Job Target or Discovery Run."""
+    
+    # V5.2: If we have a Target URL, the goal should be specific to that site (Execution Mode)
+    if url:
+        print(f"[REDCLAW] Task Logic: Switching from '{goal}' to 'Apply for job at {url}'.")
+        goal = f"Carefully fill out the application form at {url} using the user's profile and resume data."
+
     # 1. Setup
     print(f"\n[REDCLAW] Connecting to LM Studio at {LM_STUDIO_HOST}...")
     

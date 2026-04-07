@@ -97,14 +97,27 @@ class RedClawAgent:
             await asyncio.sleep(1) # Small buffer between actions
 
     def _generate_action_plan(self, goal: str) -> str:
-        """Generate a structured plan for the task before execution. (Synchronous for threading)"""
-        prompt = f"Generate a high-level step-by-step action plan to achieve this goal: {goal}. Focus on major milestones (e.g., Navigate, Detect Form, Fill, Pause for Submit)."
+        """Generate a structured, browser-level action plan for the current URL. (Synchronous)"""
+        url = self.browser.page.url
+        prompt = f"""
+        GOAL: {goal}
+        CURRENT SITE: {url}
+        
+        Generate a concise, 4-5 step BROWSER EXECUTION PLAN for this specific task.
+        DO NOT give career advice or long-term timelines.
+        FOCUS ON: 
+        1. Form Detection (Which fields are we looking for?)
+        2. Data Entry (Mapping user profile to this site)
+        3. File Handling (Resume/Portfolio)
+        4. Review & Submit (Final human-in-the-loop checkpoint)
+        """
         messages = [{"role": "user", "content": prompt}]
         return self.llm.chat_completion(messages)
 
     def _get_human_approval_sync(self, plan: str) -> bool:
         """Request explicit human approval for the proposed plan. (Synchronous for threading)"""
-        print("\n[REDCLAW] Do you approve this plan? (yes/no/edit)")
+        print("\n[REDCLAW] Do you approve this browser execution plan? (yes/no)")
+        print("[REDCLAW] Type 'no' if the plan is too broad or contains non-browser 'career advice'.")
         while True:
             response = input("RedClaw Approve> ")
             if response.lower() == "yes":
