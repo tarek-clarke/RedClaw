@@ -80,6 +80,10 @@ async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_
             await browser.navigate(url)
             await agent.run_task(goal)
         
+    except Exception as e:
+        print(f"\n[REDCLAW] CRITICAL ERROR: {str(e)}")
+        print("[REDCLAW] BROWSER PROTECTED: Keeping session open for diagnosis.")
+        await asyncio.to_thread(input, "Press Enter to close browser and exit...")
     finally:
         await browser.stop()
 

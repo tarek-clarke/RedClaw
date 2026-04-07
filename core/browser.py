@@ -3,6 +3,7 @@ import asyncio
 from typing import Optional, Dict, Any, List
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 from config import HEADLESS, BROWSER_TIMEOUT, SCREENSHOT_PATH, SESSIONS_DIR
+from core.safety_policy import SafetyPolicy
 
 class BrowserManager:
     """Wrapper for Playwright to handle browser automation with persistent session support."""
@@ -38,8 +39,15 @@ class BrowserManager:
             await self.playwright.stop()
 
     async def navigate(self, url: str):
-        """Navigate to a URL."""
+        """Navigate to a URL and check for safety/captchas."""
         await self.page.goto(url, timeout=BROWSER_TIMEOUT)
+        
+        # Immediate CAPTCHA check after any navigation (V2.6)
+        safety = SafetyPolicy()
+        accessibility_tree = await self.get_accessibility_tree()
+        if safety.is_captcha_present(accessibility_tree):
+            print(f"\n[REDCLAW] NAVIGATION WARNING: CAPTCHA detected. Pausing for human intervention.")
+            await self.wait_for_user()
 
     async def take_screenshot(self, filename: str = "observation.png") -> str:
         """Capture screenshot for visual observation."""
