@@ -1,0 +1,16 @@
+{
+  "full_name": "Applicant Name",
+  "email": "email@example.com",
+  "phone": "+1-234-567-8900",
+  "links": {
+    "linkedin": "https://www.linkedin.com/in/your-profile",
+    "github": "https://github.com/your-username",
+    "website": "https://your-portfolio.com"
+  },
+  "key_highlights": [
+    "PhD Researcher specialized in Resilient Frameworks.",
+    "Creator of the RedClaw Autonomous Browser Agent.",
+    "Expert in local LLM deployment on AMD hardware."
+  ],
+  "phd_focus": "Resilient RAP Framework for reconcilement and data integrity."
+}

@@ -1,0 +1,15 @@
+# RedClaw Local Data (Ignored for Privacy)
+user_profile.json
+resume.pdf
+*.pdf
+*.docx
+screenshots/
+.env
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.DS_Store
