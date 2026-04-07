@@ -83,29 +83,38 @@ class JobDiscovery:
             
         return results[:10]
 
-    async def run_discovery(self) -> List[Dict[str, Any]]:
+    async def run_discovery(self, goal: str = "Data Engineer") -> List[Dict[str, Any]]:
         """Run the full discovery loop: Query -> Search -> Score -> Rank."""
-        print("\n[REDCLAW] Starting Discovery Engine (Parallel Mode)...")
+        print(f"\n[REDCLAW] Launching Discovery Engine V3 (Target: {goal})...")
         
-        # Start both in parallel to reduce idle time
+        # 1. Start query generation in background
         query_task = asyncio.create_task(self.generate_search_queries())
-        nav_task = asyncio.create_task(self.browser.navigate("https://www.google.com"))
         
-        # Wait for both to be ready
-        print("[REDCLAW] Synchronizing search brain and browser...")
-        queries, _ = await asyncio.gather(query_task, nav_task)
+        # 2. IMMEDIATE ACTION: Start the first search using the user's specific GOAL
+        # We add 'jobs' and avoid using the user's name as the primary search
+        primary_query = f"{goal} jobs"
+        print(f"[REDCLAW] Starting primary search: '{primary_query}'...")
+        all_jobs = await self.search_google_jobs(primary_query)
         
-        all_jobs = []
-        for q in queries[:2]: 
-            print(f"[REDCLAW] Searching for: '{q}'...")
-            jobs = await self.search_google_jobs(q)
-            all_jobs.extend(jobs)
+        # 3. Now catch up with the LLM-generated queries
+        print("[REDCLAW] Checking if LLM has additional high-value queries...")
+        try:
+            additional_queries = await asyncio.wait_for(query_task, timeout=2.0)
+            for q in additional_queries[:1]: # Add one more high-value query
+                if q.lower() not in primary_query.lower():
+                    print(f"[REDCLAW] Expanding search: '{q}'...")
+                    extra_jobs = await self.search_google_jobs(q)
+                    all_jobs.extend(extra_jobs)
+        except:
+            print("[REDCLAW] Primary search complete. (LLM was too slow, skipping expansion)")
         
         if not all_jobs:
+            print("[REDCLAW] No jobs found. Try adjusting your goal.")
             return []
 
-        # 3. Scored and ranked jobs
+        # 4. Scored and ranked jobs
         print(f"\n[REDCLAW] Scoring {len(all_jobs)} jobs for profile fit...")
+        # ... (rest of the scoring logic)
         scored_jobs = []
         for job in all_jobs:
             score_data = await self.preflight.get_job_fit_score(job['snippet'])

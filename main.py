@@ -51,10 +51,10 @@ async def run_redclaw(goal: str, url: str, resume_text: str, profile: dict, dry_
         
         # 2. Discovery Mode (V2.3 - Autostart if no URL)
         if (discover or not url):
-            print("[REDCLAW] No URL provided. Launching Job Discovery Mode...")
+            print(f"[REDCLAW] No URL provided. Launching Job Discovery Mode for: {goal}...")
             from core.discovery import JobDiscovery
             discovery = JobDiscovery(browser, llm, preflight)
-            ranked_jobs = await discovery.run_discovery()
+            ranked_jobs = await discovery.run_discovery(goal=goal)
             
             if not ranked_jobs:
                 print("[REDCLAW] No jobs found during discovery. Try a different goal.")
