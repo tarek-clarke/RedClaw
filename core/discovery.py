@@ -31,15 +31,13 @@ class JobDiscovery:
         print(f"[REDCLAW] Generating search queries... (Waiting for LM Studio response)")
         messages = [{"role": "user", "content": prompt}]
         try:
-            # We'll try to get a response, but we have fallbacks
-            response = self.llm.chat_completion(messages)
-            # Basic cleaning in case LLM wraps in markdown
+            # Short-circuit if model is slow
+            response = await asyncio.wait_for(asyncio.to_thread(self.llm.chat_completion, messages), timeout=7.0)
             if "```json" in response:
                 response = response.split("```json")[1].split("```")[0].strip()
             return json.loads(response)
         except Exception as e:
             print(f"[REDCLAW] LLM Fallback: Using default profile-based queries.")
-            # Fallback queries based on PhD / Data Engineering profile
             return ["Senior Data Engineer Statistics Canada", "PhD ML Engineer ROCm", "Autonomous Analytics Pipeline Developer"]
 
     async def search_google_jobs(self, query: str) -> List[Dict[str, Any]]:
@@ -87,12 +85,15 @@ class JobDiscovery:
 
     async def run_discovery(self) -> List[Dict[str, Any]]:
         """Run the full discovery loop: Query -> Search -> Score -> Rank."""
-        # 1. Start navigation immediately so user sees something happening
-        print("\n[REDCLAW] Initializing search... (Browser now navigating)")
-        await self.browser.navigate("https://www.google.com")
+        print("\n[REDCLAW] Starting Discovery Engine (Parallel Mode)...")
         
-        # 2. Parallel: Generate queries while browser is ready
-        queries = await self.generate_search_queries()
+        # Start both in parallel to reduce idle time
+        query_task = asyncio.create_task(self.generate_search_queries())
+        nav_task = asyncio.create_task(self.browser.navigate("https://www.google.com"))
+        
+        # Wait for both to be ready
+        print("[REDCLAW] Synchronizing search brain and browser...")
+        queries, _ = await asyncio.gather(query_task, nav_task)
         
         all_jobs = []
         for q in queries[:2]: 
