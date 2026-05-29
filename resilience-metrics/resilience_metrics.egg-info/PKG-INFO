@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: resilience-metrics
+Version: 1.0.0
+Summary: Established system resilience scoring metrics for TKDE paper evaluation
+Author: Academic Research
+Requires-Python: >=3.10
+Dynamic: author
+Dynamic: requires-python
+Dynamic: summary
